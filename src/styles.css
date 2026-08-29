@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+:root {
+  /* Direction A: Editorial Dark Palette */
+  --app-bg: #0A0A0A;
+  --app-surface: #121212;
+  --app-surface-raised: #181818;
+  --app-surface-hover: #222222;
+  --app-border: #222222;
+  --app-border-subtle: #181818;
+  --app-border-hover: #3A3A3A;
+  --app-border-accent: rgba(214, 69, 69, 0.5);
+  
+  --app-text: #F5F4F0;
+  --app-text-secondary: #8E8E8C;
+  --app-text-muted: #555553;
+  
+  /* Precision Accent */
+  --app-accent: #D64545;
+  --app-accent-hover: #E05656;
+  --app-accent-subtle: rgba(214, 69, 69, 0.12);
+  --app-emerald: #10B981;
+}
+
+.light {
+  /* Direction B: Clinical Light Palette */
+  --app-bg: #F5F4F0;
+  --app-surface: #FFFFFF;
+  --app-surface-raised: #EBEAE4;
+  --app-surface-hover: #E2E1DA;
+  --app-border: #DCDAD2;
+  --app-border-subtle: #E8E7E0;
+  --app-border-hover: #AFAEA6;
+  --app-border-accent: rgba(214, 69, 69, 0.5);
+  
+  --app-text: #0A0A0A;
+  --app-text-secondary: #5A5A58;
+  --app-text-muted: #8E8E8C;
+  
+  /* Precision Accent */
+  --app-accent: #D64545;
+  --app-accent-hover: #BF3636;
+  --app-accent-subtle: rgba(214, 69, 69, 0.08);
+  --app-emerald: #059669;
+}
+
+body {
+  margin: 0;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  font-family: 'Satoshi', system-ui, sans-serif;
+  transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Tokens */
+.font-display {
+  font-family: 'Clash Display', 'Space Grotesk', sans-serif;
+  letter-spacing: -0.035em;
+}
+
+.font-body {
+  font-family: 'Satoshi', sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.01em;
+}
+
+.tracking-mono-label {
+  letter-spacing: 0.18em;
+}
+
+/* Semantic Theme Helpers */
+.bg-app { background-color: var(--app-bg); }
+.bg-surface { background-color: var(--app-surface); }
+.bg-surface-raised { background-color: var(--app-surface-raised); }
+.bg-surface-hover:hover { background-color: var(--app-surface-hover); }
+
+.border-app { border-color: var(--app-border); }
+.border-app-subtle { border-color: var(--app-border-subtle); }
+.border-app-hover:hover { border-color: var(--app-border-hover); }
+
+.text-main { color: var(--app-text); }
+.text-secondary { color: var(--app-text-secondary); }
+.text-muted { color: var(--app-text-muted); }
+.text-accent { color: var(--app-accent); }
+
+.hairline-border {
+  border: 1px solid var(--app-border);
+}
+
+.hairline-t {
+  border-top: 1px solid var(--app-border);
+}
+
+.hairline-b {
+  border-bottom: 1px solid var(--app-border);
+}
+
+.hairline-r {
+  border-right: 1px solid var(--app-border);
+}
+
+.hairline-l {
+  border-left: 1px solid var(--app-border);
+}
+
+/* Custom Minimalist Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--app-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--app-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-accent);
+}
+
+/* Subtle Film Grain Noise Texture */
+.film-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+/* Exam Integrity Lock */
+.exam-protection {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
