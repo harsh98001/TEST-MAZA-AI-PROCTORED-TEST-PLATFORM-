@@ -11,6 +11,7 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  Terminal,
   User,
   X,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import {
   resetPasswordForEmail,
 } from '../../lib/supabaseClient';
 import { useApp } from '../../context/AppContext';
+import { AuthScene3D } from '../three/AuthScene3D';
 
 export function AuthModal({ isOpen, onClose }) {
   const { setUser, addToast } = useApp();
@@ -107,7 +109,6 @@ export function AuthModal({ isOpen, onClose }) {
     try {
       const result = await signUpWithPassword(email, password, fullName);
 
-      // If user is automatically logged in or needs confirmation
       if (result.session) {
         const verifiedName = fullName.trim() || email.split('@')[0] || 'Candidate';
         setUser((prev) => ({
@@ -119,7 +120,7 @@ export function AuthModal({ isOpen, onClose }) {
         addToast('success', 'ACCOUNT CREATED', `Welcome to Test Maza, ${verifiedName}!`);
         onClose();
       } else {
-        setSuccessMessage(`We sent a verification link to ${email}. Click the link in your email to complete registration!`);
+        setSuccessMessage(`Verification link dispatched to ${email}. Click the link in your inbox to enter Test Maza!`);
         setMode('sent_confirmation');
       }
     } catch (err) {
@@ -147,7 +148,7 @@ export function AuthModal({ isOpen, onClose }) {
 
     try {
       await sendMagicLink(email);
-      setSuccessMessage(`Magic login link sent to ${email}! Click the link in your inbox to sign in instantly.`);
+      setSuccessMessage(`Passwordless login link dispatched to ${email}! Click the link in your inbox to sign in instantly.`);
       setMode('sent_confirmation');
     } catch (err) {
       console.error('Magic link error:', err);
@@ -170,7 +171,7 @@ export function AuthModal({ isOpen, onClose }) {
 
     try {
       await resetPasswordForEmail(email);
-      setSuccessMessage(`Password reset link sent to ${email}! Check your inbox.`);
+      setSuccessMessage(`Password reset link dispatched to ${email}! Check your inbox.`);
       setMode('sent_confirmation');
     } catch (err) {
       console.error('Reset error:', err);
@@ -182,97 +183,114 @@ export function AuthModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Dark backdrop */}
+      {/* 3D Dark backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/80 backdrop-blur-md"
+        className="fixed inset-0 bg-black/85 backdrop-blur-xl transition-all"
       />
 
-      {/* Modal Card */}
+      {/* Main 3D Card Container */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.2 }}
-        className="relative w-full max-w-md bg-surface border border-app rounded-xl shadow-2xl overflow-hidden z-10 text-main font-mono"
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-lg bg-[#0C0C0C]/95 border border-[#D64545]/40 rounded-2xl shadow-[0_0_60px_-15px_rgba(214,69,69,0.4)] overflow-hidden z-10 text-main font-mono"
       >
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-app bg-surface-raised/40 flex justify-between items-center">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded bg-[#D64545]/10 border border-[#D64545]/30 flex items-center justify-center text-[#D64545]">
-              <ShieldCheck size={16} />
-            </div>
-            <div>
-              <span className="text-[10px] text-muted tracking-mono-label uppercase block font-medium">
-                CANDIDATE GATEWAY
-              </span>
-              <h2 className="text-sm font-display font-bold uppercase text-main tracking-tight">
-                {mode === 'signin' && 'SIGN IN TO TEST MAZA'}
-                {mode === 'signup' && 'CREATE CANDIDATE ACCOUNT'}
-                {mode === 'magiclink' && 'PASSWORDLESS MAGIC LINK'}
-                {mode === 'forgot' && 'RESET YOUR PASSWORD'}
-                {mode === 'sent_confirmation' && 'CHECK YOUR INBOX'}
-              </h2>
-            </div>
+        {/* Subtle Cyberpunk Scanline */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#D64545]/5 to-transparent pointer-events-none opacity-40 animate-pulse" />
+
+        {/* 1. TOP 3D THREE.JS SPATIAL HEADER */}
+        <div className="relative h-44 border-b border-app bg-gradient-to-b from-black/90 via-[#141414]/90 to-[#0C0C0C] overflow-hidden flex flex-col justify-between p-4">
+          {/* Live Interactive Three.js 3D Canvas */}
+          <div className="absolute inset-0 z-0">
+            <AuthScene3D className="w-full h-full" />
           </div>
 
-          <button
-            onClick={onClose}
-            className="text-muted hover:text-main p-1.5 rounded-lg hover:bg-surface-raised transition-colors cursor-pointer"
-            type="button"
-          >
-            <X size={16} />
-          </button>
+          {/* Top HUD Row */}
+          <div className="relative z-10 flex justify-between items-center text-[10px] text-muted uppercase tracking-mono-label">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-[#D64545] animate-pulse" />
+              <span className="text-[#D64545] font-medium">[ 3D BIO-AUTH CORE ACTIVE ]</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-muted hover:text-white p-1.5 rounded-lg bg-black/50 border border-white/10 hover:border-[#D64545] transition-all cursor-pointer"
+              type="button"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Bottom Title Telemetry */}
+          <div className="relative z-10 space-y-1">
+            <span className="text-[9px] text-[#A0A09C] uppercase tracking-mono-label block">
+              // ENCRYPTION: SHA-256 • PKCE AUTH PROTOCOL
+            </span>
+            <h2 className="text-xl font-display font-bold uppercase text-white tracking-tight drop-shadow-md">
+              {mode === 'signin' && 'CANDIDATE SIGN IN'}
+              {mode === 'signup' && 'REGISTER CANDIDATE ACCOUNT'}
+              {mode === 'magiclink' && 'PASSWORDLESS MAGIC LINK'}
+              {mode === 'forgot' && 'CREDENTIAL RECOVERY'}
+              {mode === 'sent_confirmation' && 'VERIFICATION DISPATCHED'}
+            </h2>
+          </div>
         </div>
 
-        {/* Auth Mode Tabs */}
+        {/* 2. AUTH MODE TABS */}
         {mode !== 'sent_confirmation' && (
-          <div className="grid grid-cols-2 border-b border-app text-xs uppercase text-center font-mono">
+          <div className="grid grid-cols-2 border-b border-app text-xs uppercase text-center font-mono bg-black/40">
             <button
               onClick={() => {
                 setMode('signin');
                 setErrorMessage('');
               }}
-              className={`py-3 transition-colors border-b-2 cursor-pointer ${
+              className={`py-3.5 transition-all border-b-2 cursor-pointer flex items-center justify-center space-x-2 ${
                 mode === 'signin' || mode === 'magiclink' || mode === 'forgot'
-                  ? 'border-[#D64545] text-main font-bold bg-surface-raised/30'
+                  ? 'border-[#D64545] text-white font-bold bg-[#D64545]/10'
                   : 'border-transparent text-muted hover:text-secondary'
               }`}
               type="button"
             >
-              SIGN IN
+              <Key size={13} className={mode === 'signin' ? 'text-[#D64545]' : 'text-muted'} />
+              <span>SIGN IN</span>
             </button>
             <button
               onClick={() => {
                 setMode('signup');
                 setErrorMessage('');
               }}
-              className={`py-3 transition-colors border-b-2 cursor-pointer ${
+              className={`py-3.5 transition-all border-b-2 cursor-pointer flex items-center justify-center space-x-2 ${
                 mode === 'signup'
-                  ? 'border-[#D64545] text-main font-bold bg-surface-raised/30'
+                  ? 'border-[#D64545] text-white font-bold bg-[#D64545]/10'
                   : 'border-transparent text-muted hover:text-secondary'
               }`}
               type="button"
             >
-              CREATE ACCOUNT
+              <Sparkles size={13} className={mode === 'signup' ? 'text-[#D64545]' : 'text-muted'} />
+              <span>CREATE ACCOUNT</span>
             </button>
           </div>
         )}
 
-        {/* Body Content */}
+        {/* 3. FORM BODY CONTENT */}
         <div className="p-6 space-y-5 text-xs">
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-[#D64545]/10 border border-[#D64545]/40 text-[#D64545] flex items-start space-x-2.5">
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3.5 rounded-lg bg-[#D64545]/15 border border-[#D64545]/50 text-[#FF6B6B] flex items-start space-x-2.5 shadow-sm"
+            >
               <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span className="leading-relaxed">{errorMessage}</span>
-            </div>
+              <span className="leading-relaxed font-sans text-xs">{errorMessage}</span>
+            </motion.div>
           )}
 
-          {/* 1. SIGN IN FORM */}
+          {/* MODE: SIGN IN */}
           {mode === 'signin' && (
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-1.5">
@@ -287,7 +305,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="student@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -316,7 +334,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -324,26 +342,26 @@ export function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-md cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-[0_4px_20px_rgba(214,69,69,0.4)] cursor-pointer"
               >
                 {loading ? (
-                  <RefreshCw size={14} className="animate-spin" />
+                  <RefreshCw size={15} className="animate-spin" />
                 ) : (
                   <>
-                    <span>SIGN IN</span>
+                    <span>AUTHENTICATE SESSION</span>
                     <ArrowRight size={14} />
                   </>
                 )}
               </button>
 
-              <div className="pt-2 text-center border-t border-app">
+              <div className="pt-3 text-center border-t border-app">
                 <button
                   type="button"
                   onClick={() => {
                     setMode('magiclink');
                     setErrorMessage('');
                   }}
-                  className="text-[11px] text-muted hover:text-main transition-colors cursor-pointer"
+                  className="text-[11px] text-muted hover:text-[#D64545] transition-colors cursor-pointer"
                 >
                   ⚡ Or Sign In via <strong>Passwordless Magic Link</strong>
                 </button>
@@ -351,7 +369,7 @@ export function AuthModal({ isOpen, onClose }) {
             </form>
           )}
 
-          {/* 2. SIGN UP FORM (Confirmation Link) */}
+          {/* MODE: SIGN UP (Confirmation Link) */}
           {mode === 'signup' && (
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-1.5">
@@ -365,7 +383,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="Candidate Name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -382,7 +400,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="student@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -399,7 +417,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -407,29 +425,29 @@ export function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-md cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-[0_4px_20px_rgba(214,69,69,0.4)] cursor-pointer"
               >
                 {loading ? (
-                  <RefreshCw size={14} className="animate-spin" />
+                  <RefreshCw size={15} className="animate-spin" />
                 ) : (
                   <>
-                    <span>REGISTER ACCOUNT</span>
+                    <span>REGISTER CANDIDATE ACCOUNT</span>
                     <ArrowRight size={14} />
                   </>
                 )}
               </button>
 
-              <p className="text-[10px] text-muted text-center leading-relaxed">
+              <p className="text-[10px] text-muted text-center leading-relaxed font-sans">
                 A verification link will be delivered directly to your email inbox to activate your account.
               </p>
             </form>
           )}
 
-          {/* 3. MAGIC LINK FORM */}
+          {/* MODE: MAGIC LINK */}
           {mode === 'magiclink' && (
             <form onSubmit={handleSendMagicLink} className="space-y-4">
-              <p className="text-secondary leading-relaxed">
-                Enter your email. We will send you an instant login link — no password required.
+              <p className="text-secondary leading-relaxed font-sans text-xs">
+                Enter your email address. We will dispatch an instant passwordless login link directly to your inbox.
               </p>
 
               <div className="space-y-1.5">
@@ -444,7 +462,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="student@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -452,14 +470,14 @@ export function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-md cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-[0_4px_20px_rgba(214,69,69,0.4)] cursor-pointer"
               >
                 {loading ? (
-                  <RefreshCw size={14} className="animate-spin" />
+                  <RefreshCw size={15} className="animate-spin" />
                 ) : (
                   <>
                     <Send size={14} />
-                    <span>SEND MAGIC LINK</span>
+                    <span>DISPATCH MAGIC LINK</span>
                   </>
                 )}
               </button>
@@ -468,7 +486,7 @@ export function AuthModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={() => setMode('signin')}
-                  className="text-[11px] text-muted hover:text-main transition-colors cursor-pointer"
+                  className="text-[11px] text-muted hover:text-white transition-colors cursor-pointer"
                 >
                   ← Back to Email & Password Sign In
                 </button>
@@ -476,11 +494,11 @@ export function AuthModal({ isOpen, onClose }) {
             </form>
           )}
 
-          {/* 4. FORGOT PASSWORD FORM */}
+          {/* MODE: FORGOT PASSWORD */}
           {mode === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
-              <p className="text-secondary leading-relaxed">
-                Enter your email address to receive a secure password reset link.
+              <p className="text-secondary leading-relaxed font-sans text-xs">
+                Enter your registered account email to receive a secure password recovery link.
               </p>
 
               <div className="space-y-1.5">
@@ -495,7 +513,7 @@ export function AuthModal({ isOpen, onClose }) {
                     placeholder="student@university.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-surface-raised border border-app rounded-lg pl-10 pr-3.5 py-2.5 text-xs text-main placeholder:text-muted/60 focus:border-[#D64545] outline-none transition-colors"
+                    className="w-full bg-[#161616] border border-app rounded-lg pl-10 pr-3.5 py-3 text-xs text-white placeholder:text-muted/50 focus:border-[#D64545] focus:ring-1 focus:ring-[#D64545]/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -503,14 +521,14 @@ export function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-md cursor-pointer"
+                className="w-full py-3.5 px-4 rounded-lg bg-[#D64545] hover:bg-[#E05656] disabled:opacity-50 text-white text-xs tracking-mono-label uppercase font-medium flex items-center justify-center space-x-2 transition-all shadow-[0_4px_20px_rgba(214,69,69,0.4)] cursor-pointer"
               >
                 {loading ? (
-                  <RefreshCw size={14} className="animate-spin" />
+                  <RefreshCw size={15} className="animate-spin" />
                 ) : (
                   <>
                     <Send size={14} />
-                    <span>SEND RESET LINK</span>
+                    <span>DISPATCH RECOVERY LINK</span>
                   </>
                 )}
               </button>
@@ -519,7 +537,7 @@ export function AuthModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={() => setMode('signin')}
-                  className="text-[11px] text-muted hover:text-main transition-colors cursor-pointer"
+                  className="text-[11px] text-muted hover:text-white transition-colors cursor-pointer"
                 >
                   ← Back to Sign In
                 </button>
@@ -527,32 +545,32 @@ export function AuthModal({ isOpen, onClose }) {
             </form>
           )}
 
-          {/* 5. CONFIRMATION EMAIL SENT SCREEN */}
+          {/* MODE: CONFIRMATION SENT */}
           {mode === 'sent_confirmation' && (
             <div className="text-center py-4 space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-full bg-[#10B981]/15 border border-[#10B981]/40 flex items-center justify-center text-[#10B981]">
-                <Mail size={24} className="animate-bounce" />
+              <div className="w-14 h-14 mx-auto rounded-full bg-[#10B981]/15 border border-[#10B981]/50 flex items-center justify-center text-[#10B981] shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                <Mail size={26} className="animate-bounce" />
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-base font-bold text-main uppercase">
-                  CONFIRMATION EMAIL SENT!
+                <h3 className="text-base font-bold text-white uppercase font-display">
+                  CONFIRMATION EMAIL DISPATCHED!
                 </h3>
-                <p className="text-secondary text-xs leading-relaxed max-w-sm mx-auto">
+                <p className="text-secondary text-xs leading-relaxed max-w-sm mx-auto font-sans">
                   {successMessage}
                 </p>
               </div>
 
-              <div className="p-3 rounded-lg bg-surface-raised border border-app text-[11px] text-muted">
-                Click the confirmation link inside your email to be logged in automatically.
+              <div className="p-3.5 rounded-lg bg-[#161616] border border-app text-[11px] text-[#A0A09C] font-sans">
+                Open your email client and click the verification link to be authenticated into Test Maza automatically.
               </div>
 
               <button
                 onClick={onClose}
-                className="w-full py-2.5 rounded-lg bg-surface-raised border border-app hover:border-[#D64545] text-main text-xs uppercase tracking-mono-label transition-colors cursor-pointer"
+                className="w-full py-3 rounded-lg bg-[#161616] border border-app hover:border-[#D64545] text-white text-xs uppercase tracking-mono-label transition-colors cursor-pointer"
                 type="button"
               >
-                CLOSE
+                CLOSE WINDOW
               </button>
             </div>
           )}
