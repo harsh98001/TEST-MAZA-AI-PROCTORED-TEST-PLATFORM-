@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { PageTransition } from '../components/common/PageTransition';
@@ -14,11 +14,19 @@ import { extractUnitStats } from '../utils/calculations';
 import { formatDuration } from '../utils/formatters';
 import { FULLSCREEN_EXIT_LIMIT, PROCTOR_VIOLATION_LIMIT } from '../utils/constants';
 import { useAdvancedProctor } from '../hooks/useAdvancedProctor';
+import { useAIProctoring } from '../hooks/useAIProctoring';
+import {
+  createExamSession,
+  updateExamProgress,
+  logProctoringViolation,
+  completeExamSession,
+  subscribeToStudentTermination,
+} from '../services/examSessionService';
 
 export function ExamPage() {
   const { courseId, phaseId } = useParams();
   const navigate = useNavigate();
-  const { courses, savePhaseResult, addToast } = useApp();
+  const { courses, savePhaseResult, addToast, user } = useApp();
 
   const selectedCourse = courses.find((c) => c.id === courseId) || courses[0];
   const phases = selectedCourse.phases || [];
@@ -35,6 +43,12 @@ export function ExamPage() {
   const [answers, setAnswers] = useState({});
   const [isCompleted, setIsCompleted] = useState(false);
   const [isTerminated, setIsTerminated] = useState(false);
+  const [lockoutReason, setLockoutReason] = useState(null);
+  const [lockoutMessage, setLockoutMessage] = useState(null);
+
+  // Live DB Session State
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [videoElement, setVideoElement] = useState(null);
 
   // Proctor States
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
@@ -47,32 +61,48 @@ export function ExamPage() {
   const [timeRemaining, setTimeRemaining] = useState(totalDuration);
   const [startTime, setStartTime] = useState(null);
 
-  // Record Violation Function
-  const recordViolation = useCallback((reason) => {
-    if (fullscreenAllowedExit || isTerminated || isCompleted) return;
+  // 1. Record Standard Violation
+  const recordViolation = useCallback(
+    (reason, extraDetail = {}) => {
+      if (fullscreenAllowedExit || isTerminated || isCompleted) return;
 
-    setProctorViolations((prev) => {
-      const isDuplicateRecent = prev[0]?.reason === reason && Date.now() - prev[0]?.time < 1200;
-      if (isDuplicateRecent) return prev;
+      setProctorViolations((prev) => {
+        const isDuplicateRecent = prev[0]?.reason === reason && Date.now() - prev[0]?.time < 1200;
+        if (isDuplicateRecent) return prev;
 
-      const next = [{ reason, time: Date.now() }, ...prev];
-      if (next.length >= PROCTOR_VIOLATION_LIMIT) {
-        setIsTerminated(true);
-        setFullscreenAllowedExit(true);
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
+        const next = [{ reason, time: Date.now(), ...extraDetail }, ...prev];
+        if (next.length >= PROCTOR_VIOLATION_LIMIT) {
+          setIsTerminated(true);
+          setLockoutReason('PROCTOR_VIOLATION_LIMIT');
+          setFullscreenAllowedExit(true);
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          }
+        } else {
+          setActiveWarning({
+            reason,
+            count: next.length,
+          });
         }
-      } else {
-        setActiveWarning({
-          reason,
-          count: next.length,
+        return next;
+      });
+
+      // Log into live DB
+      if (activeSessionId) {
+        logProctoringViolation({
+          sessionId: activeSessionId,
+          studentId: user?.id,
+          eventType: extraDetail.type || 'SYSTEM_VIOLATION',
+          severity: 'warning',
+          detail: { reason, ...extraDetail },
+          snapshotBase64: extraDetail.snapshot || null,
         });
       }
-      return next;
-    });
-  }, [fullscreenAllowedExit, isTerminated, isCompleted]);
+    },
+    [activeSessionId, fullscreenAllowedExit, isCompleted, isTerminated, user?.id]
+  );
 
-  // Connect Advanced Proctor Hook (Webcam, Mic decibels, Anti-clipboard, Screen share)
+  // 2. Hardware Proctor (Webcam, Mic decibels, Anti-clipboard)
   const {
     cameraStream,
     audioLevel,
@@ -80,18 +110,90 @@ export function ExamPage() {
     hasMicPermission,
   } = useAdvancedProctor({
     isActive: hasStarted && !isCompleted && !isTerminated,
-    onViolation: recordViolation,
+    onViolation: (reason) => recordViolation(reason, { type: 'HARDWARE_AUDIO_CLIPBOARD' }),
     maxViolations: PROCTOR_VIOLATION_LIMIT,
   });
 
-  // Fullscreen and Security Listeners
+  // 3. AI Vision Proctor (Zero face, Multiple faces, Mobile phone)
+  const handleCriticalAIViolation = useCallback(
+    ({ reason, message, snapshot }) => {
+      if (isTerminated || isCompleted) return;
+
+      setIsTerminated(true);
+      setLockoutReason(reason);
+      setLockoutMessage(message);
+      setFullscreenAllowedExit(true);
+
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+
+      setProctorViolations((prev) => [
+        { reason: message || reason, time: Date.now(), snapshot },
+        ...prev,
+      ]);
+
+      if (activeSessionId) {
+        logProctoringViolation({
+          sessionId: activeSessionId,
+          studentId: user?.id,
+          eventType: 'MULTIPLE_FACES',
+          severity: 'critical',
+          detail: { reason, message },
+          snapshotBase64: snapshot,
+        });
+      }
+    },
+    [activeSessionId, isCompleted, isTerminated, user?.id]
+  );
+
+  const {
+    riskScore,
+    faceCount,
+    aiStatus,
+    captureSnapshot,
+  } = useAIProctoring({
+    videoElement,
+    isActive: hasStarted && !isCompleted && !isTerminated && hasCameraPermission,
+    onViolation: (reason, data) => recordViolation(reason, data),
+    onCriticalViolation: handleCriticalAIViolation,
+    audioLevel,
+  });
+
+  // 4. Realtime Subscription for Remote Faculty Termination
+  useEffect(() => {
+    if (!activeSessionId || !hasStarted || isCompleted || isTerminated) return;
+
+    const unsubscribe = subscribeToStudentTermination(activeSessionId, (termEvent) => {
+      setIsTerminated(true);
+      setLockoutReason('FACULTY_TERMINATED');
+      setLockoutMessage(termEvent.reason || 'Terminated remotely by supervising faculty proctor.');
+      setFullscreenAllowedExit(true);
+
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+
+      setProctorViolations((prev) => [
+        {
+          reason: termEvent.reason || 'Terminated by Faculty Proctor',
+          time: Date.now(),
+        },
+        ...prev,
+      ]);
+    });
+
+    return () => unsubscribe();
+  }, [activeSessionId, hasStarted, isCompleted, isTerminated]);
+
+  // 5. Fullscreen and Security Listeners
   useEffect(() => {
     if (!hasStarted || isCompleted || isTerminated || fullscreenAllowedExit) return;
 
     function handleFullscreenChange() {
       if (document.fullscreenElement || fullscreenAllowedExit) return;
 
-      recordViolation('Fullscreen mode was exited');
+      recordViolation('Fullscreen mode was exited', { type: 'FULLSCREEN_EXIT' });
       setFullscreenExitCount((count) => {
         const next = count + 1;
         if (next >= FULLSCREEN_EXIT_LIMIT) {
@@ -103,12 +205,12 @@ export function ExamPage() {
 
     function handleVisibilityChange() {
       if (document.visibilityState === 'hidden') {
-        recordViolation('Exam window was hidden or browser tab was switched');
+        recordViolation('Exam window was hidden or browser tab was switched', { type: 'TAB_BLUR' });
       }
     }
 
     function handleBlur() {
-      recordViolation('Test window lost active focus');
+      recordViolation('Test window lost active focus', { type: 'WINDOW_BLUR' });
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -122,7 +224,7 @@ export function ExamPage() {
     };
   }, [hasStarted, isCompleted, isTerminated, fullscreenAllowedExit, recordViolation]);
 
-  // Countdown Timer
+  // 6. Countdown Timer
   useEffect(() => {
     if (!hasStarted || isCompleted || isTerminated) return;
 
@@ -140,6 +242,7 @@ export function ExamPage() {
     return () => clearInterval(interval);
   }, [hasStarted, isCompleted, isTerminated]);
 
+  // 7. Start Exam & Initialize Session
   const handleStartExam = async () => {
     try {
       if (document.documentElement.requestFullscreen) {
@@ -148,21 +251,53 @@ export function ExamPage() {
     } catch (e) {
       console.warn('Fullscreen request bypassed:', e);
     }
+
+    const newSession = await createExamSession({
+      studentId: user?.id || 'guest_user',
+      studentName: user?.name || 'Candidate',
+      studentEmail: user?.email || '',
+      trackId: selectedCourse.id,
+      trackTitle: selectedCourse.title,
+      phase: currentPhaseIndex >= 0 ? currentPhaseIndex + 1 : 1,
+      totalQuestions: activeQuestions.length,
+    });
+
+    if (newSession?.id) {
+      setActiveSessionId(newSession.id);
+    }
+
     setStartTime(Date.now());
     setTimeRemaining(totalDuration);
     setHasStarted(true);
   };
 
+  // 8. Choose Answer & Update Progress in DB
   const handleChooseAnswer = (label) => {
     const q = activeQuestions[currentIndex];
     if (!q || answers[q.id]) return;
 
-    setAnswers((prev) => ({
-      ...prev,
+    const updatedAnswers = {
+      ...answers,
       [q.id]: label,
-    }));
+    };
+    setAnswers(updatedAnswers);
+
+    const answeredCount = Object.keys(updatedAnswers).length;
+    const correctCount = activeQuestions.filter((item) => updatedAnswers[item.id] === item.answer).length;
+    const progressPct = (answeredCount / activeQuestions.length) * 100;
+
+    if (activeSessionId) {
+      updateExamProgress({
+        sessionId: activeSessionId,
+        progressPct,
+        answeredCount,
+        correctCount,
+        riskScore,
+      });
+    }
   };
 
+  // 9. Finish Exam
   const handleFinishExam = () => {
     const totalAnswered = Object.keys(answers).length;
     const totalCorrect = activeQuestions.filter((q) => answers[q.id] === q.answer).length;
@@ -184,6 +319,16 @@ export function ExamPage() {
     };
 
     savePhaseResult(selectedCourse.id, activePhase?.id || 'exam-1', result);
+
+    if (activeSessionId) {
+      completeExamSession({
+        sessionId: activeSessionId,
+        answeredCount: totalAnswered,
+        correctCount: totalCorrect,
+        riskScore,
+      });
+    }
+
     setFullscreenAllowedExit(true);
     setIsCompleted(true);
     if (document.fullscreenElement) {
@@ -196,9 +341,12 @@ export function ExamPage() {
     setCurrentIndex(0);
     setProctorViolations([]);
     setIsTerminated(false);
+    setLockoutReason(null);
+    setLockoutMessage(null);
     setIsCompleted(false);
     setFullscreenAllowedExit(false);
     setHasStarted(false);
+    setActiveSessionId(null);
   };
 
   const totalAnswered = Object.keys(answers).length;
@@ -231,6 +379,8 @@ export function ExamPage() {
     return (
       <ExamLockoutScreen
         violations={proctorViolations}
+        lockoutReason={lockoutReason}
+        lockoutMessage={lockoutMessage}
         onRestart={handleRestart}
       />
     );
@@ -293,12 +443,16 @@ export function ExamPage() {
 
               {/* Sidebar with Live Proctor Video Feed & Navigator */}
               <div className="lg:col-span-1 space-y-6">
-                {/* Live Webcam & Audio Decibel Widget */}
+                {/* Live Webcam & Audio Decibel Widget with AI Vision Status */}
                 <LiveProctorWidget
                   cameraStream={cameraStream}
                   audioLevel={audioLevel}
                   hasCameraPermission={hasCameraPermission}
                   hasMicPermission={hasMicPermission}
+                  riskScore={riskScore}
+                  aiStatus={aiStatus}
+                  faceCount={faceCount}
+                  onVideoElementReady={setVideoElement}
                 />
 
                 {/* Navigator Matrix */}

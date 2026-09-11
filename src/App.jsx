@@ -13,6 +13,7 @@ const ExamPage = lazy(() => import('./pages/ExamPage').then((m) => ({ default: m
 const ReviewPage = lazy(() => import('./pages/ReviewPage').then((m) => ({ default: m.ReviewPage })));
 const PerformancePage = lazy(() => import('./pages/PerformancePage').then((m) => ({ default: m.PerformancePage })));
 const FacultyPage = lazy(() => import('./pages/FacultyPage').then((m) => ({ default: m.FacultyPage })));
+const LiveExamMonitorPage = lazy(() => import('./pages/faculty/LiveExamMonitorPage').then((m) => ({ default: m.LiveExamMonitorPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
@@ -37,6 +38,7 @@ export function App() {
               <Route path="/review" element={<ReviewPage />} />
               <Route path="/performance" element={<PerformancePage />} />
               <Route path="/faculty" element={<FacultyPage />} />
+              <Route path="/faculty/live" element={<LiveExamMonitorPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/arena" element={<ArenaLandingPage />} />
