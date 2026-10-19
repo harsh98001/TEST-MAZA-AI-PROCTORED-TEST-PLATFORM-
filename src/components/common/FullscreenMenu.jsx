@@ -125,7 +125,7 @@ export function FullscreenMenu() {
           {/* Bottom Footer Info */}
           <div className="hairline-t pt-6 flex flex-col md:flex-row justify-between items-center text-[11px] font-mono text-muted gap-4">
             <div className="flex items-center space-x-6">
-              <span>TEST MAZA 3.0</span>
+              <span>TEST MAZA 3.1</span>
               <span>THE ARENA ENGINE</span>
             </div>
             <div className="flex items-center space-x-6 text-secondary">

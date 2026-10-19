@@ -1,4 +1,5 @@
 export const APP_NAME = 'TEST MAZA';
+export const APP_VERSION = '3.1.1';
 export const APP_SUBTITLE = 'MIX MAZA ACADEMIC ARENA & PROCTORING PLATFORM';
 
 export const AUTO_ADVANCE_DELAY_MS = 700;
