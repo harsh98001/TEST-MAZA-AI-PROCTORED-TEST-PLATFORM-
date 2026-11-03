@@ -16,6 +16,7 @@ const FacultyPage = lazy(() => import('./pages/FacultyPage').then((m) => ({ defa
 const LiveExamMonitorPage = lazy(() => import('./pages/faculty/LiveExamMonitorPage').then((m) => ({ default: m.LiveExamMonitorPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const AuthVerifiedPage = lazy(() => import('./pages/auth/AuthVerifiedPage').then((m) => ({ default: m.AuthVerifiedPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 // The Arena Module (Code-split separately to avoid heavy initial bundle)
@@ -47,6 +48,10 @@ export function App() {
             {/* Standalone IDE Layout */}
             <Route path="/arena/:trackId" element={<ArenaWorkspacePage />} />
             <Route path="/arena/:trackId/:questionSlug" element={<ArenaWorkspacePage />} />
+
+            {/* Standalone Verification Auto-Close Route */}
+            <Route path="/auth/verified" element={<AuthVerifiedPage />} />
+            <Route path="/auth/callback" element={<AuthVerifiedPage />} />
 
             {/* Catch-all 404 */}
             <Route path="*" element={<NotFoundPage />} />
