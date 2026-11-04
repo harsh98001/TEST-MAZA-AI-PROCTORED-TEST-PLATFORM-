@@ -77,9 +77,9 @@ export function Header() {
           : 'py-5 bg-transparent'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 lg:gap-6 xl:gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Left: Brand Identity & Menu Trigger */}
-        <div className="flex items-center space-x-3 sm:space-x-5 shrink-0">
+        <div className="flex items-center space-x-6">
           <Link
             to="/"
             className="group flex items-baseline space-x-2.5"
@@ -98,21 +98,21 @@ export function Header() {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             onMouseEnter={() => setCursorLabel('INDEX')}
             onMouseLeave={() => setCursorLabel('')}
-            className="hidden md:flex items-center space-x-1.5 text-xs font-mono tracking-mono-label text-secondary hover:text-main px-2.5 py-1 rounded border border-app bg-surface-raised/80 hover:border-[#D64545] transition-all uppercase cursor-pointer shrink-0"
+            className="hidden md:flex items-center space-x-1.5 text-xs font-mono tracking-mono-label text-secondary hover:text-main transition-colors uppercase py-1 cursor-pointer"
             type="button"
           >
-            {isMenuOpen ? <X size={12} /> : <Menu size={12} />}
+            {isMenuOpen ? <X size={13} /> : <Menu size={13} />}
             <span>INDEX</span>
           </button>
         </div>
 
         {/* Center: Dynamic Role-Specific Navigation Links */}
-        <nav className="hidden lg:flex items-center justify-center gap-4 xl:gap-6 text-xs font-mono tracking-mono-label text-secondary uppercase whitespace-nowrap min-w-0">
+        <nav className="hidden lg:flex items-center space-x-7 text-xs font-mono tracking-mono-label text-secondary uppercase">
           {user.role === 'Faculty' ? (
             <>
               <Link
                 to="/courses"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors ${
+                className={`hover:text-main transition-colors ${
                   location.pathname === '/courses' ? 'text-[#D64545] font-semibold' : ''
                 }`}
               >
@@ -120,24 +120,24 @@ export function Header() {
               </Link>
               <Link
                 to="/faculty"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors ${
+                className={`hover:text-main transition-colors ${
                   location.pathname === '/faculty' ? 'text-[#D64545] font-semibold' : ''
                 }`}
               >
-                02 / OVERSIGHT
+                02 / FACULTY OVERSIGHT
               </Link>
               <Link
                 to="/faculty/live"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors flex items-center gap-1.5 ${
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
                   location.pathname === '/faculty/live' ? 'text-[#D64545] font-semibold' : ''
                 }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#D64545] animate-pulse" />
-                <span>03 / LIVE EXAM ROOM</span>
+                <span>03 / LIVE EXAM ROOM &amp; AUDIT</span>
               </Link>
               <Link
                 to="/review"
-                className="whitespace-nowrap shrink-0 hover:text-main transition-colors"
+                className="hover:text-main transition-colors"
               >
                 04 / QUESTION BANK
               </Link>
@@ -146,16 +146,16 @@ export function Header() {
             <>
               <Link
                 to="/admin"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors flex items-center gap-1.5 ${
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
                   location.pathname === '/admin' ? 'text-[#38bdf8] font-semibold' : ''
                 }`}
               >
                 <Shield size={12} className="text-[#38bdf8]" />
-                <span>01 / ADMIN CONTROL</span>
+                <span>01 / ADMIN CONTROL ROOM</span>
               </Link>
               <Link
                 to="/faculty/live"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors flex items-center gap-1.5 ${
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
                   location.pathname === '/faculty/live' ? 'text-[#38bdf8] font-semibold' : ''
                 }`}
               >
@@ -164,7 +164,7 @@ export function Header() {
               </Link>
               <Link
                 to="/courses"
-                className="whitespace-nowrap shrink-0 hover:text-main transition-colors"
+                className="hover:text-main transition-colors"
               >
                 03 / MASTER CURRICULA
               </Link>
@@ -173,7 +173,7 @@ export function Header() {
             <>
               <Link
                 to="/courses"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors ${
+                className={`hover:text-main transition-colors ${
                   location.pathname === '/courses' ? 'text-[#D64545] font-semibold' : ''
                 }`}
               >
@@ -182,7 +182,7 @@ export function Header() {
 
               <Link
                 to="/arena"
-                className={`whitespace-nowrap shrink-0 hover:text-main transition-colors flex items-center gap-1.5 ${
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
                   location.pathname.startsWith('/arena') ? 'text-[#D64545] font-semibold' : ''
                 }`}
               >
@@ -192,14 +192,14 @@ export function Header() {
 
               <Link
                 to="/practice/web-development/phase-1"
-                className="whitespace-nowrap shrink-0 hover:text-main transition-colors"
+                className="hover:text-main transition-colors"
               >
                 03 / PRACTICE
               </Link>
 
               <Link
                 to="/exam/web-development/phase-1"
-                className="whitespace-nowrap shrink-0 hover:text-main transition-colors flex items-center gap-1.5"
+                className="hover:text-main transition-colors flex items-center gap-1.5"
               >
                 <Shield size={12} className="text-[#D64545]" />
                 <span>04 / EXAM PROCTOR</span>
@@ -207,7 +207,7 @@ export function Header() {
 
               <Link
                 to="/review"
-                className="whitespace-nowrap shrink-0 hover:text-main transition-colors"
+                className="hover:text-main transition-colors"
               >
                 05 / SOLUTIONS
               </Link>
@@ -216,7 +216,7 @@ export function Header() {
         </nav>
 
         {/* Right: Controls & Auth */}
-        <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+        <div className="flex items-center space-x-3">
           {/* Quick Search */}
           <button
             onClick={() => setIsSearchOpen(true)}
