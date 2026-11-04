@@ -25,7 +25,7 @@ const MENU_ITEMS = [
   {
     number: '04',
     title: 'EXAM PROCTOR',
-    desc: 'Strict proctored examination simulation with camera, audio, and violation tracking.',
+    desc: 'Strict proctored examination simulation with camera, audio, screen share, and violation tracking.',
     path: '/exam/web-development/phase-1',
   },
   {
@@ -42,6 +42,18 @@ const MENU_ITEMS = [
   },
   {
     number: '07',
+    title: 'FACULTY ROOM',
+    desc: 'Supervise live student sessions, monitor screen shares, broadcast motivation & audit cheating.',
+    path: '/faculty/live',
+  },
+  {
+    number: '08',
+    title: 'ADMIN CONTROL',
+    desc: 'Central repository managing all student test reports, faculty actions, and user roles.',
+    path: '/admin',
+  },
+  {
+    number: '09',
     title: 'SETTINGS',
     desc: 'Customize proctoring sensitivities, themes, audio, and session preferences.',
     path: '/settings',
@@ -68,7 +80,7 @@ export function FullscreenMenu() {
                 INDEX DIRECTORY
               </span>
               <span className="text-[10px] font-mono text-muted">
-                // 07 PRIMARY CHANNELS
+                // 09 PRIMARY CHANNELS
               </span>
             </div>
 
@@ -125,8 +137,8 @@ export function FullscreenMenu() {
           {/* Bottom Footer Info */}
           <div className="hairline-t pt-6 flex flex-col md:flex-row justify-between items-center text-[11px] font-mono text-muted gap-4">
             <div className="flex items-center space-x-6">
-              <span>TEST MAZA 3.1</span>
-              <span>THE ARENA ENGINE</span>
+              <span>TEST MAZA 3.2</span>
+              <span>ACADEMIC INTEGRITY ENGINE</span>
             </div>
             <div className="flex items-center space-x-6 text-secondary">
               <Link

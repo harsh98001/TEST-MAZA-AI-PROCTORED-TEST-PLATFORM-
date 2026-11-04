@@ -5,6 +5,9 @@ import {
   Eye,
   Lock,
   Mic,
+  Monitor,
+  Radio,
+  Share2,
   ShieldAlert,
   ShieldCheck,
   Smartphone,
@@ -23,6 +26,8 @@ export function LiveProctorWidget({
   aiStatus = 'NORMAL',
   faceCount = 1,
   onVideoElementReady = null,
+  isScreenSharing = false,
+  onToggleScreenShare = null,
 }) {
   const videoRef = useRef(null);
 
@@ -156,7 +161,33 @@ export function LiveProctorWidget({
           </span>
           <span className="text-[#D64545]">LOCKED</span>
         </div>
+
+        <div className="flex justify-between items-center">
+          <span className="flex items-center gap-1.5">
+            <Monitor size={11} className={isScreenSharing ? 'text-[#10B981]' : 'text-muted'} /> Live Screen Share
+          </span>
+          <span className={isScreenSharing ? 'text-[#10B981] font-semibold flex items-center gap-1' : 'text-muted'}>
+            {isScreenSharing && <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping" />}
+            {isScreenSharing ? 'STREAMING' : 'OFFLINE'}
+          </span>
+        </div>
       </div>
+
+      {/* Screen Share Action Button */}
+      {onToggleScreenShare && (
+        <button
+          onClick={onToggleScreenShare}
+          type="button"
+          className={`w-full py-2 px-3 rounded border text-[10px] tracking-mono-label uppercase font-medium flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+            isScreenSharing
+              ? 'bg-[#10B981]/15 border-[#10B981]/40 text-[#10B981] hover:bg-[#10B981]/25'
+              : 'bg-surface-raised border-app hover:border-[#D64545] text-main'
+          }`}
+        >
+          <Monitor size={12} className={isScreenSharing ? 'text-[#10B981]' : 'text-[#D64545]'} />
+          <span>{isScreenSharing ? 'STOP SCREEN SHARING' : 'SHARE SCREEN WITH FACULTY'}</span>
+        </button>
+      )}
     </div>
   );
 }

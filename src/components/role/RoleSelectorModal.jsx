@@ -1,18 +1,47 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Award, Check, GraduationCap, ShieldCheck, Users, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Award, Check, GraduationCap, Lock, ShieldCheck, Users, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../utils/constants';
 
 export function RoleSelectorModal() {
-  const { user, setUser, isRoleModalOpen, setIsRoleModalOpen, addToast } = useApp();
+  const navigate = useNavigate();
+  const {
+    user,
+    setUser,
+    isRoleModalOpen,
+    setIsRoleModalOpen,
+    setIsAuthModalOpen,
+    addToast,
+  } = useApp();
 
   const handleSelectRole = (roleKey) => {
+    // Strictly require authenticated credentials when switching to Faculty or Administrator
+    if (roleKey !== 'Student' && !user?.isAuthenticated) {
+      setIsRoleModalOpen(false);
+      setIsAuthModalOpen(true);
+      addToast(
+        'warning',
+        'AUTHENTICATION REQUIRED',
+        `Access to ${roleKey} oversight dashboard strictly requires verified academic sign-in. Please authenticate.`
+      );
+      return;
+    }
+
     setUser((prev) => ({
       ...prev,
       role: roleKey,
     }));
     setIsRoleModalOpen(false);
-    addToast('info', 'ROLE SWITCHED', `Active session configured as ${roleKey}.`);
+    addToast('success', 'ROLE ACTIVATED', `Active workspace configured as ${roleKey}.`);
+
+    if (roleKey === 'Faculty') {
+      navigate('/faculty');
+    } else if (roleKey === 'Administrator') {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
   };
 
   const roleList = [
@@ -26,13 +55,15 @@ export function RoleSelectorModal() {
       key: 'Faculty',
       icon: Users,
       ...ROLES.Faculty,
-      features: ['Curriculum Unit Coverage', 'Student Readiness Telemetry', 'Weak Topic Diagnostics', 'Question Bank Audit'],
+      requiresAuth: true,
+      features: ['Live Candidate Surveillance', 'Real-Time Screen Share View', 'Disqualification & Motivation Rights', 'Permanent Cheating Evidence Audit'],
     },
     {
       key: 'Administrator',
       icon: ShieldCheck,
       ...ROLES.Administrator,
-      features: ['Proctor Violation Monitoring', 'Exam Session Telemetry', 'System Status Watchdog', 'Integrity Controls'],
+      requiresAuth: true,
+      features: ['Master Student & Faculty Records', 'Supreme Anti-Cheating Telemetry', 'User Role Assignment Directory', 'Proctor Integrity Controls'],
     },
   ];
 
@@ -79,6 +110,8 @@ export function RoleSelectorModal() {
               {roleList.map((roleItem) => {
                 const Icon = roleItem.icon;
                 const isSelected = user.role === roleItem.key;
+                const needsAuth = roleItem.requiresAuth && !user.isAuthenticated;
+
                 return (
                   <button
                     key={roleItem.key}
@@ -86,6 +119,8 @@ export function RoleSelectorModal() {
                     className={`p-5 rounded-xl border text-left flex flex-col justify-between transition-all duration-200 relative group cursor-pointer ${
                       isSelected
                         ? 'border-[#10B981] bg-[#10B981]/10 shadow-md ring-2 ring-[#10B981]/20'
+                        : needsAuth
+                        ? 'border-app bg-surface-raised/70 hover:border-[#D64545]/50'
                         : 'border-app bg-surface-raised hover:border-[#10B981]/50'
                     }`}
                     type="button"
@@ -98,11 +133,15 @@ export function RoleSelectorModal() {
                       >
                         <Icon size={20} />
                       </div>
-                      {isSelected && (
+                      {isSelected ? (
                         <span className="px-2.5 py-0.5 rounded text-[10px] font-mono bg-[#10B981] text-white font-bold">
                           ACTIVE
                         </span>
-                      )}
+                      ) : needsAuth ? (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-[#D64545]/20 text-[#D64545] border border-[#D64545]/40 font-bold flex items-center gap-1">
+                          <Lock size={9} /> AUTH REQUIRED
+                        </span>
+                      ) : null}
                     </div>
 
                     {/* Title & Blurb */}
@@ -131,7 +170,7 @@ export function RoleSelectorModal() {
 
             {/* Footer */}
             <div className="flex justify-between items-center text-xs font-mono text-muted border-t border-app pt-4">
-              <span>Switching roles reconfigures your navigation and monitoring telemetry.</span>
+              <span>Switching to Faculty or Admin requires verified academic authentication.</span>
               <button
                 onClick={() => setIsRoleModalOpen(false)}
                 className="text-main hover:text-[#10B981] transition-colors uppercase font-bold cursor-pointer"

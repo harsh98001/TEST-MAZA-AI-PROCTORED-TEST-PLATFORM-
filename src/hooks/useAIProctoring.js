@@ -11,7 +11,7 @@ export function useAIProctoring({
   const [riskScore, setRiskScore] = useState(0); // 0 to 100
   const [faceCount, setFaceCount] = useState(1);
   const [isDeviceDetected, setIsDeviceDetected] = useState(false);
-  const [aiStatus, setAiStatus] = useState('STANDBY'); // 'STANDBY' | 'NORMAL' | 'NO_FACE' | 'MULTI_FACE' | 'PHONE'
+  const [aiStatus, setAiStatus] = useState('STANDBY'); // 'STANDBY' | 'NORMAL' | 'NO_FACE' | 'MULTI_FACE' | 'MULTI_FACE_WARN' | 'PHONE'
   const [violationsList, setViolationsList] = useState([]);
 
   const multiFaceStreakRef = useRef(0);
@@ -24,7 +24,7 @@ export function useAIProctoring({
 
     const decayTimer = setInterval(() => {
       setRiskScore((prev) => Math.max(0, prev - 2));
-    }, 3000);
+    }, 3500);
 
     return () => clearInterval(decayTimer);
   }, [isActive]);
@@ -33,10 +33,10 @@ export function useAIProctoring({
   useEffect(() => {
     if (!isActive || audioLevel <= 68) return;
 
-    setRiskScore((prev) => Math.min(100, prev + 8));
+    setRiskScore((prev) => Math.min(100, prev + 6));
   }, [audioLevel, isActive]);
 
-  // 3. Handle AI Vision Events
+  // 3. Handle AI Vision Events with robust debounce buffers
   const handleVisionEvent = useCallback(
     (event) => {
       if (!isActive) return;
@@ -51,18 +51,18 @@ export function useAIProctoring({
           zeroFaceStreakRef.current = 0;
           setAiStatus('NORMAL');
         } else if (count === 0) {
-          // Zero faces detected
+          // Candidate absent / occluded
           zeroFaceStreakRef.current++;
           multiFaceStreakRef.current = 0;
           setAiStatus('NO_FACE');
 
-          // Log warning if absence lasts > 3 consecutive passes (~1.5s)
-          if (zeroFaceStreakRef.current === 3) {
+          // Log warning if absence lasts > 5 consecutive passes (~2.5s)
+          if (zeroFaceStreakRef.current === 5) {
             const snapshot = videoElement ? captureEvidenceSnapshot(videoElement, 320) : null;
             setRiskScore((prev) => Math.min(100, prev + 15));
             const violation = {
               type: 'FACE_ABSENT',
-              reason: 'Candidate face absent from camera frame',
+              reason: 'Candidate face absent from camera frame for > 2.5s',
               timestamp: Date.now(),
               snapshot,
             };
@@ -73,15 +73,20 @@ export function useAIProctoring({
           // Multiple faces detected
           multiFaceStreakRef.current++;
           zeroFaceStreakRef.current = 0;
-          setAiStatus('MULTI_FACE');
-          setRiskScore(100);
 
-          // Debounce: 2 consecutive detections (~1s) triggers immediate hard auto-lockout
-          if (multiFaceStreakRef.current >= 2) {
+          if (multiFaceStreakRef.current < 6) {
+            // Warning stage (first 1-2.5 seconds)
+            setAiStatus('MULTI_FACE_WARN');
+            setRiskScore((prev) => Math.min(100, prev + 15));
+          } else {
+            // Sustained multi-face breach (> 3.0s sustained): Hard auto-lockout
+            setAiStatus('MULTI_FACE');
+            setRiskScore(100);
+
             const snapshot = videoElement ? captureEvidenceSnapshot(videoElement, 320) : null;
             const violation = {
               type: 'MULTIPLE_FACES',
-              reason: 'Multiple faces detected in examination frame (Unauthorized presence)',
+              reason: 'Multiple individuals sustained in examination frame for > 3.0s (Unauthorized presence)',
               timestamp: Date.now(),
               snapshot,
             };
@@ -97,7 +102,7 @@ export function useAIProctoring({
         // Mobile phone / handheld device detected
         setIsDeviceDetected(true);
         setAiStatus('PHONE');
-        setRiskScore((prev) => Math.min(100, prev + 45));
+        setRiskScore((prev) => Math.min(100, prev + 35));
 
         const violation = {
           type: 'DEVICE_DETECTED',

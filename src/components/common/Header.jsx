@@ -3,16 +3,21 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Code,
   Command,
+  FileText,
+  GraduationCap,
   LogIn,
   LogOut,
   Menu,
   Moon,
+  Radio,
   Search,
   Settings,
   Shield,
+  ShieldCheck,
   Sun,
   Terminal,
   User,
+  Users,
   X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -55,6 +60,7 @@ export function Header() {
       ...prev,
       name: 'Guest Candidate',
       email: '',
+      role: 'Student',
       isAuthenticated: false,
     }));
     setShowProfileMenu(false);
@@ -100,48 +106,113 @@ export function Header() {
           </button>
         </div>
 
-        {/* Center: Navigation Links */}
+        {/* Center: Dynamic Role-Specific Navigation Links */}
         <nav className="hidden lg:flex items-center space-x-7 text-xs font-mono tracking-mono-label text-secondary uppercase">
-          <Link
-            to="/courses"
-            className={`hover:text-main transition-colors ${
-              location.pathname === '/courses' ? 'text-[#D64545] font-semibold' : ''
-            }`}
-          >
-            01 / CURRICULA
-          </Link>
+          {user.role === 'Faculty' ? (
+            <>
+              <Link
+                to="/courses"
+                className={`hover:text-main transition-colors ${
+                  location.pathname === '/courses' ? 'text-[#D64545] font-semibold' : ''
+                }`}
+              >
+                01 / CURRICULA
+              </Link>
+              <Link
+                to="/faculty"
+                className={`hover:text-main transition-colors ${
+                  location.pathname === '/faculty' ? 'text-[#D64545] font-semibold' : ''
+                }`}
+              >
+                02 / FACULTY OVERSIGHT
+              </Link>
+              <Link
+                to="/faculty/live"
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
+                  location.pathname === '/faculty/live' ? 'text-[#D64545] font-semibold' : ''
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D64545] animate-pulse" />
+                <span>03 / LIVE EXAM ROOM &amp; AUDIT</span>
+              </Link>
+              <Link
+                to="/review"
+                className="hover:text-main transition-colors"
+              >
+                04 / QUESTION BANK
+              </Link>
+            </>
+          ) : user.role === 'Administrator' ? (
+            <>
+              <Link
+                to="/admin"
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
+                  location.pathname === '/admin' ? 'text-[#38bdf8] font-semibold' : ''
+                }`}
+              >
+                <Shield size={12} className="text-[#38bdf8]" />
+                <span>01 / ADMIN CONTROL ROOM</span>
+              </Link>
+              <Link
+                to="/faculty/live"
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
+                  location.pathname === '/faculty/live' ? 'text-[#38bdf8] font-semibold' : ''
+                }`}
+              >
+                <Radio size={12} className="text-[#38bdf8] animate-pulse" />
+                <span>02 / LIVE PROCTOR ROOM</span>
+              </Link>
+              <Link
+                to="/courses"
+                className="hover:text-main transition-colors"
+              >
+                03 / MASTER CURRICULA
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/courses"
+                className={`hover:text-main transition-colors ${
+                  location.pathname === '/courses' ? 'text-[#D64545] font-semibold' : ''
+                }`}
+              >
+                01 / CURRICULA
+              </Link>
 
-          <Link
-            to="/arena"
-            className={`hover:text-main transition-colors flex items-center gap-1.5 ${
-              location.pathname.startsWith('/arena') ? 'text-[#D64545] font-semibold' : ''
-            }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#D64545] animate-pulse" />
-            <span>02 / THE ARENA</span>
-          </Link>
+              <Link
+                to="/arena"
+                className={`hover:text-main transition-colors flex items-center gap-1.5 ${
+                  location.pathname.startsWith('/arena') ? 'text-[#D64545] font-semibold' : ''
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D64545] animate-pulse" />
+                <span>02 / THE ARENA</span>
+              </Link>
 
-          <Link
-            to="/practice/web-development/phase-1"
-            className="hover:text-main transition-colors"
-          >
-            03 / PRACTICE
-          </Link>
+              <Link
+                to="/practice/web-development/phase-1"
+                className="hover:text-main transition-colors"
+              >
+                03 / PRACTICE
+              </Link>
 
-          <Link
-            to="/exam/web-development/phase-1"
-            className="hover:text-main transition-colors flex items-center gap-1.5"
-          >
-            <Shield size={12} className="text-[#D64545]" />
-            <span>04 / EXAM PROCTOR</span>
-          </Link>
+              <Link
+                to="/exam/web-development/phase-1"
+                className="hover:text-main transition-colors flex items-center gap-1.5"
+              >
+                <Shield size={12} className="text-[#D64545]" />
+                <span>04 / EXAM PROCTOR</span>
+              </Link>
 
-          <Link
-            to="/review"
-            className="hover:text-main transition-colors"
-          >
-            05 / SOLUTIONS
-          </Link>
+              <Link
+                to="/review"
+                className="hover:text-main transition-colors"
+              >
+                05 / SOLUTIONS
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Right: Controls & Auth */}
@@ -161,13 +232,21 @@ export function Header() {
             </kbd>
           </button>
 
-          {/* Role Indicator */}
+          {/* Role Indicator Button */}
           <button
             onClick={() => setIsRoleModalOpen(true)}
             className="hidden sm:flex items-center space-x-2 px-2.5 py-1.5 rounded border border-app bg-surface-raised text-[11px] font-mono text-secondary hover:text-main transition-all cursor-pointer"
             type="button"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#D64545]" />
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                user.role === 'Administrator'
+                  ? 'bg-[#38bdf8]'
+                  : user.role === 'Faculty'
+                  ? 'bg-[#10B981]'
+                  : 'bg-[#D64545]'
+              }`}
+            />
             <span className="uppercase">{user.role}</span>
           </button>
 
@@ -189,13 +268,49 @@ export function Header() {
                   <div className="px-3 py-2 border-b border-app">
                     <p className="text-main font-medium truncate">{user.name}</p>
                     <p className="text-[10px] text-muted truncate">{user.email}</p>
+                    <span className="text-[9px] text-[#10B981] font-bold block uppercase mt-0.5">
+                      Role: {user.role}
+                    </span>
                   </div>
+
+                  {user.role === 'Faculty' && (
+                    <>
+                      <Link
+                        to="/faculty"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-surface-raised text-main font-medium transition-colors"
+                      >
+                        <Users size={12} className="text-[#D64545]" />
+                        <span>FACULTY OVERSIGHT</span>
+                      </Link>
+                      <Link
+                        to="/faculty/live"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-surface-raised text-main font-medium transition-colors"
+                      >
+                        <Radio size={12} className="text-[#10B981]" />
+                        <span>LIVE EXAM ROOM &amp; AUDIT</span>
+                      </Link>
+                    </>
+                  )}
+
+                  {user.role === 'Administrator' && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-surface-raised text-main font-medium transition-colors"
+                    >
+                      <ShieldCheck size={12} className="text-[#38bdf8]" />
+                      <span>ADMIN CONTROL ROOM</span>
+                    </Link>
+                  )}
+
                   <Link
                     to="/performance"
                     onClick={() => setShowProfileMenu(false)}
                     className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-surface-raised text-secondary hover:text-main transition-colors"
                   >
-                    <span>ANALYTICS & METRICS</span>
+                    <span>ANALYTICS &amp; METRICS</span>
                   </Link>
                   <Link
                     to="/settings"

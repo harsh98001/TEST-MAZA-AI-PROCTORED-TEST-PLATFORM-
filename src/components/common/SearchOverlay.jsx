@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, BookOpen, Search, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -8,6 +8,27 @@ export function SearchOverlay() {
   const { isSearchOpen, setIsSearchOpen, courses } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+
+  // Fix: Prevent background scrolling and Lenis scroll trapping when search is open
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSearchOpen, setIsSearchOpen]);
 
   const searchResults = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -62,7 +83,8 @@ export function SearchOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-surface/98 backdrop-blur-2xl flex flex-col p-6 md:p-12 overflow-y-auto text-main transition-colors"
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-50 bg-surface/98 backdrop-blur-2xl flex flex-col p-6 md:p-12 overflow-y-auto overscroll-contain text-main transition-colors"
         >
           {/* Search Header */}
           <div className="max-w-4xl mx-auto w-full flex items-center justify-between border-b border-app pb-6">
@@ -87,7 +109,7 @@ export function SearchOverlay() {
           </div>
 
           {/* Search Content */}
-          <div className="max-w-4xl mx-auto w-full py-8 space-y-8 flex-1">
+          <div className="max-w-4xl mx-auto w-full py-8 space-y-8 flex-1" data-lenis-prevent="true">
             {searchTerm.length < 2 ? (
               <div className="text-center py-16 text-xs font-mono tracking-widest text-muted uppercase">
                 ENTER AT LEAST 2 CHARACTERS TO COMMENCE SEARCH

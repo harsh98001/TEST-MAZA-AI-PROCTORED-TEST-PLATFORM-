@@ -20,7 +20,6 @@ export function useAdvancedProctor({
   // 1. Initialize Webcam & Microphone
   useEffect(() => {
     if (!isActive) {
-      // Clean up media streams
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop());
         setCameraStream(null);
@@ -107,9 +106,23 @@ export function useAdvancedProctor({
     };
   }, [isActive]);
 
-  // 2. Anti-Copy / Anti-Paste / Anti-Context Menu / Anti-Screenshot
+  // 2. Strict Keyboard Lockout (EVERY KEY BLOCKED) + Anti-Copy / Anti-Paste / Anti-Context Menu
   useEffect(() => {
     if (!isActive) return;
+
+    let lastKeyViolationTime = 0;
+
+    // Intercept and strictly block EVERY key on the keyboard
+    const handleAnyKeyEvent = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const now = Date.now();
+      if (now - lastKeyViolationTime > 1200) {
+        lastKeyViolationTime = now;
+        onViolation(`Hardware Lockout: Keyboard input is strictly disabled during examination. Please use mouse pointer only (Key: ${e.key || 'Locked'}).`);
+      }
+    };
 
     const handleCopy = (e) => {
       e.preventDefault();
@@ -135,43 +148,27 @@ export function useAdvancedProctor({
       e.preventDefault();
     };
 
-    const handleKeyDown = (e) => {
-      const key = e.key.toLowerCase();
-      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    document.addEventListener('copy', handleCopy, true);
+    document.addEventListener('cut', handleCut, true);
+    document.addEventListener('paste', handlePaste, true);
+    document.addEventListener('contextmenu', handleContextMenu, true);
+    document.addEventListener('selectstart', handleSelectStart, true);
 
-      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+U (source), Ctrl+S (save), Ctrl+P (print)
-      if (isCtrlOrCmd && ['c', 'v', 'x', 'a', 'u', 's', 'p'].includes(key)) {
-        e.preventDefault();
-        onViolation(`Keyboard shortcut Ctrl+${key.toUpperCase()} blocked`);
-      }
-
-      // Block F12 and Ctrl+Shift+I / Ctrl+Shift+J (DevTools)
-      if (e.key === 'F12' || (isCtrlOrCmd && e.shiftKey && ['i', 'j', 'c'].includes(key))) {
-        e.preventDefault();
-        onViolation('Developer Inspection Tools shortcut blocked');
-      }
-
-      // Block PrintScreen
-      if (e.key === 'PrintScreen') {
-        e.preventDefault();
-        onViolation('Screenshot / PrintScreen capture attempted');
-      }
-    };
-
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('cut', handleCut);
-    document.addEventListener('paste', handlePaste);
-    document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('selectstart', handleSelectStart);
-    window.addEventListener('keydown', handleKeyDown, true);
+    // Capture phase listener blocking keydown, keyup, and keypress
+    window.addEventListener('keydown', handleAnyKeyEvent, true);
+    window.addEventListener('keyup', handleAnyKeyEvent, true);
+    window.addEventListener('keypress', handleAnyKeyEvent, true);
 
     return () => {
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('cut', handleCut);
-      document.removeEventListener('paste', handlePaste);
-      document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('selectstart', handleSelectStart);
-      window.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('copy', handleCopy, true);
+      document.removeEventListener('cut', handleCut, true);
+      document.removeEventListener('paste', handlePaste, true);
+      document.removeEventListener('contextmenu', handleContextMenu, true);
+      document.removeEventListener('selectstart', handleSelectStart, true);
+
+      window.removeEventListener('keydown', handleAnyKeyEvent, true);
+      window.removeEventListener('keyup', handleAnyKeyEvent, true);
+      window.removeEventListener('keypress', handleAnyKeyEvent, true);
     };
   }, [isActive, onViolation]);
 

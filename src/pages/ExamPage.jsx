@@ -15,12 +15,16 @@ import { formatDuration } from '../utils/formatters';
 import { FULLSCREEN_EXIT_LIMIT, PROCTOR_VIOLATION_LIMIT } from '../utils/constants';
 import { useAdvancedProctor } from '../hooks/useAdvancedProctor';
 import { useAIProctoring } from '../hooks/useAIProctoring';
+import { Heart, MessageSquare, Sparkles } from 'lucide-react';
 import {
   createExamSession,
   updateExamProgress,
   logProctoringViolation,
   completeExamSession,
   subscribeToStudentTermination,
+  saveCompletedExamReport,
+  subscribeToTeacherMotivation,
+  updateScreenShareStatus,
 } from '../services/examSessionService';
 
 export function ExamPage() {
@@ -49,6 +53,10 @@ export function ExamPage() {
   // Live DB Session State
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [videoElement, setVideoElement] = useState(null);
+  const [teacherMotivation, setTeacherMotivation] = useState(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStreamRef = useRef(null);
+  const screenIntervalRef = useRef(null);
 
   // Proctor States
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
@@ -186,6 +194,127 @@ export function ExamPage() {
     return () => unsubscribe();
   }, [activeSessionId, hasStarted, isCompleted, isTerminated]);
 
+  // 4b. Realtime Subscription for Live Teacher Motivation Banner
+  useEffect(() => {
+    if (!activeSessionId || !hasStarted || isCompleted || isTerminated) return;
+
+    const unsubscribe = subscribeToTeacherMotivation(activeSessionId, (mot) => {
+      setTeacherMotivation({
+        message: mot.message,
+        teacherName: mot.teacher_name || 'Faculty Proctor',
+        time: Date.now(),
+      });
+      addToast('success', 'FACULTY MESSAGE RECEIVED', mot.message);
+      setTimeout(() => {
+        setTeacherMotivation((curr) => (curr && Date.now() - curr.time >= 8000 ? null : curr));
+      }, 9000);
+    });
+
+    return () => unsubscribe();
+  }, [activeSessionId, hasStarted, isCompleted, isTerminated, addToast]);
+
+  // 4c. Screen Share Streaming to Faculty Room
+  const stopScreenSharing = useCallback(() => {
+    if (screenIntervalRef.current) {
+      clearInterval(screenIntervalRef.current);
+      screenIntervalRef.current = null;
+    }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+    if (activeSessionId) {
+      updateScreenShareStatus(activeSessionId, false, null);
+    }
+  }, [activeSessionId]);
+
+  const handleToggleScreenShare = async () => {
+    if (isScreenSharing) {
+      stopScreenSharing();
+      addToast('info', 'SCREEN SHARE STOPPED', 'Screen stream disconnected from proctor room.');
+      return;
+    }
+
+    try {
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        addToast('error', 'NOT SUPPORTED', 'Screen sharing is not supported by your browser.');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'monitor' },
+        audio: false,
+      });
+
+      screenStreamRef.current = stream;
+      setIsScreenSharing(true);
+
+      stream.getVideoTracks()[0].onended = () => {
+        stopScreenSharing();
+      };
+
+      // Periodic capture thumbnail for live faculty monitor
+      const offscreenVideo = document.createElement('video');
+      offscreenVideo.srcObject = stream;
+      offscreenVideo.muted = true;
+      await offscreenVideo.play().catch(() => {});
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 180;
+      const ctx = canvas.getContext('2d');
+
+      const captureAndSend = () => {
+        if (!screenStreamRef.current) return;
+        try {
+          ctx.drawImage(offscreenVideo, 0, 0, 320, 180);
+          const thumb = canvas.toDataURL('image/jpeg', 0.5);
+          if (activeSessionId) {
+            updateScreenShareStatus(activeSessionId, true, thumb);
+          }
+        } catch (e) {}
+      };
+
+      setTimeout(captureAndSend, 1000);
+      screenIntervalRef.current = setInterval(captureAndSend, 4000);
+      addToast('success', 'SCREEN STREAMING', 'Display feed connected to Faculty Proctor Room.');
+    } catch (err) {
+      setIsScreenSharing(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopScreenSharing();
+    };
+  }, [stopScreenSharing]);
+
+  // 4d. Strict Hardware Keyboard Lockout: Block every single key during test attempt
+  useEffect(() => {
+    if (!hasStarted || isCompleted || isTerminated) return;
+
+    const handleKeyCapture = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      recordViolation(
+        `Hardware Lockout: Keyboard input is strictly disabled during examination. Please use mouse pointer only (Blocked: '${e.key}')`,
+        { type: 'KEYBOARD_LOCKOUT' }
+      );
+      return false;
+    };
+
+    window.addEventListener('keydown', handleKeyCapture, { capture: true, passive: false });
+    window.addEventListener('keyup', handleKeyCapture, { capture: true, passive: false });
+    window.addEventListener('keypress', handleKeyCapture, { capture: true, passive: false });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyCapture, { capture: true });
+      window.removeEventListener('keyup', handleKeyCapture, { capture: true });
+      window.removeEventListener('keypress', handleKeyCapture, { capture: true });
+    };
+  }, [hasStarted, isCompleted, isTerminated, recordViolation]);
+
   // 5. Fullscreen and Security Listeners
   useEffect(() => {
     if (!hasStarted || isCompleted || isTerminated || fullscreenAllowedExit) return;
@@ -297,13 +426,19 @@ export function ExamPage() {
     }
   };
 
-  // 9. Finish Exam
-  const handleFinishExam = () => {
+  // 9. Finish Exam & Archive Report to Supabase Server
+  const handleFinishExam = async () => {
     const totalAnswered = Object.keys(answers).length;
     const totalCorrect = activeQuestions.filter((q) => answers[q.id] === q.answer).length;
     const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
     const elapsedMs = totalDuration - timeRemaining;
     const unitStats = extractUnitStats(activeQuestions, answers);
+
+    const isCheatingFlagged = proctorViolations.length > 0 || isTerminated;
+    const flagReasons = [...new Set(proctorViolations.map((v) => v.reason || v.type))];
+    const evidenceSnapshots = proctorViolations
+      .filter((v) => v.snapshot)
+      .map((v) => ({ time: v.time, reason: v.reason, snapshot: v.snapshot }));
 
     const result = {
       isExam: true,
@@ -316,6 +451,8 @@ export function ExamPage() {
       elapsedLabel: formatDuration(elapsedMs),
       phaseTitle: activePhase?.title || 'Proctored Exam',
       unitStats,
+      isFlaggedForCheating: isCheatingFlagged,
+      flagReasons,
     };
 
     savePhaseResult(selectedCourse.id, activePhase?.id || 'exam-1', result);
@@ -327,8 +464,33 @@ export function ExamPage() {
         correctCount: totalCorrect,
         riskScore,
       });
+
+      // Permanently archive full report into Supabase server
+      await saveCompletedExamReport({
+        sessionId: activeSessionId,
+        studentId: user?.id || user?.email || 'guest_candidate',
+        studentName: user?.name || 'Candidate',
+        studentEmail: user?.email || '',
+        trackId: selectedCourse.id,
+        trackTitle: selectedCourse.title,
+        phase: currentPhaseIndex >= 0 ? currentPhaseIndex + 1 : 1,
+        totalQuestions: activeQuestions.length,
+        answeredCount: totalAnswered,
+        correctCount: totalCorrect,
+        score: totalCorrect,
+        accuracy,
+        durationMs: elapsedMs,
+        elapsedLabel: formatDuration(elapsedMs),
+        unitStats,
+        answers,
+        infractionsCount: proctorViolations.length,
+        isFlaggedForCheating: isCheatingFlagged,
+        flagReasons,
+        evidenceSnapshots,
+      });
     }
 
+    stopScreenSharing();
     setFullscreenAllowedExit(true);
     setIsCompleted(true);
     if (document.fullscreenElement) {
@@ -337,6 +499,8 @@ export function ExamPage() {
   };
 
   const handleRestart = () => {
+    stopScreenSharing();
+    setTeacherMotivation(null);
     setAnswers({});
     setCurrentIndex(0);
     setProctorViolations([]);
@@ -397,6 +561,32 @@ export function ExamPage() {
           onAcknowledge={() => setActiveWarning(null)}
         />
 
+        {/* Live Faculty Motivation Broadcast Banner */}
+        {teacherMotivation && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-xl w-full px-4 animate-bounce">
+            <div className="p-4 rounded-xl border border-[#10B981] bg-[#0A1A12]/95 backdrop-blur-md shadow-2xl text-main flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-full bg-[#10B981]/20 border border-[#10B981]/50 text-[#10B981] flex items-center justify-center shrink-0">
+                <Sparkles size={16} className="text-[#10B981]" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-center text-[10px] font-mono tracking-mono-label text-[#10B981] uppercase font-bold">
+                  <span>FACULTY SUPERVISOR // {teacherMotivation.teacherName}</span>
+                  <button
+                    onClick={() => setTeacherMotivation(null)}
+                    className="text-muted hover:text-white cursor-pointer"
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-sm font-sans font-medium text-white">
+                  "{teacherMotivation.message}"
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Exam Header */}
         <ExamHeader
           courseTitle={selectedCourse.title}
@@ -453,6 +643,8 @@ export function ExamPage() {
                   aiStatus={aiStatus}
                   faceCount={faceCount}
                   onVideoElementReady={setVideoElement}
+                  isScreenSharing={isScreenSharing}
+                  onToggleScreenShare={handleToggleScreenShare}
                 />
 
                 {/* Navigator Matrix */}
